@@ -1,0 +1,592 @@
+---
+
+---
+
+<html lang="lv">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Mērijona un Kristapona ceļojumi</title>
+		<link
+			rel="stylesheet"
+			href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+			integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+			crossorigin=""
+		/>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
+			rel="stylesheet"
+		/>
+	</head>
+	<body>
+		<main class="app-shell">
+			<section class="intro">
+				<h1>Mērijona un Kristapona ceļojumi</h1>
+			</section>
+
+			<section class="content-grid">
+				<div class="globe-card">
+					<div id="mapViz" aria-label="Interactive world travel map"></div>
+				</div>
+
+				<aside class="info-card" id="tripInfo" aria-live="polite">
+					<h2 id="tripTitle">Select a pin</h2>
+					<p id="tripSummary">Click any glowing marker to inspect the trip details.</p>
+					<dl class="stats">
+						<div>
+							<dt>Days Spent</dt>
+							<dd id="tripDays">-</dd>
+						</div>
+						<div>
+							<dt>Total Spend</dt>
+							<dd id="tripSpend">-</dd>
+						</div>
+						<div>
+							<dt>Best Moment</dt>
+							<dd id="tripMoment">-</dd>
+						</div>
+					</dl>
+				</aside>
+			</section>
+		</main>
+
+		<script is:inline type="module">
+			import L from "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/+esm";
+
+			const trips = [
+				{
+					city: "Athens",
+					country: "Greece",
+					lat: 37.9838,
+					lng: 23.7275,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Corsica",
+					country: "France",
+					lat: 41.9192,
+					lng: 8.7386,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Rome",
+					country: "Italy",
+					lat: 41.9028,
+					lng: 12.4964,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Perugia",
+					country: "Italy",
+					lat: 43.1107,
+					lng: 12.3908,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Modena",
+					country: "Italy",
+					lat: 44.6471,
+					lng: 10.9252,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Bologna",
+					country: "Italy",
+					lat: 44.4949,
+					lng: 11.3426,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Venice",
+					country: "Italy",
+					lat: 45.4408,
+					lng: 12.3155,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Cortina d'Ampezzo",
+					country: "Italy",
+					lat: 46.5405,
+					lng: 12.1357,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Milan",
+					country: "Italy",
+					lat: 45.4642,
+					lng: 9.19,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Chamonix",
+					country: "France",
+					lat: 45.9237,
+					lng: 6.8694,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Lisbon",
+					country: "Portugal",
+					lat: 38.7223,
+					lng: -9.1393,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Cordoba",
+					country: "Spain",
+					lat: 37.8882,
+					lng: -4.7794,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Madrid",
+					country: "Spain",
+					lat: 40.4168,
+					lng: -3.7038,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Paris",
+					country: "France",
+					lat: 48.8566,
+					lng: 2.3522,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Brussels",
+					country: "Belgium",
+					lat: 50.8503,
+					lng: 4.3517,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Dusseldorf",
+					country: "Germany",
+					lat: 51.2277,
+					lng: 6.7735,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Cologne",
+					country: "Germany",
+					lat: 50.9375,
+					lng: 6.9603,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Bonn",
+					country: "Germany",
+					lat: 50.7374,
+					lng: 7.0982,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Aachen",
+					country: "Germany",
+					lat: 50.7753,
+					lng: 6.0839,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Dortmund",
+					country: "Germany",
+					lat: 51.5136,
+					lng: 7.4653,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Bochum",
+					country: "Germany",
+					lat: 51.4818,
+					lng: 7.2162,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Amsterdam",
+					country: "Netherlands",
+					lat: 52.3676,
+					lng: 4.9041,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Eindhoven",
+					country: "Netherlands",
+					lat: 51.4416,
+					lng: 5.4697,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "London",
+					country: "England",
+					lat: 51.5074,
+					lng: -0.1278,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Klaipeda",
+					country: "Lithuania",
+					lat: 55.7033,
+					lng: 21.1443,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Vilnius",
+					country: "Lithuania",
+					lat: 54.6872,
+					lng: 25.2797,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Tallinn",
+					country: "Estonia",
+					lat: 59.437,
+					lng: 24.7536,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Hong Kong",
+					country: "China",
+					lat: 22.3193,
+					lng: 114.1694,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Guilin",
+					country: "China",
+					lat: 25.2742,
+					lng: 110.2991,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Yangshuo",
+					country: "China",
+					lat: 24.7785,
+					lng: 110.4966,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Furongzhen",
+					country: "China",
+					lat: 28.1722,
+					lng: 109.6295,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Zhangjiajie",
+					country: "China",
+					lat: 29.1171,
+					lng: 110.4792,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Beijing",
+					country: "China",
+					lat: 39.9042,
+					lng: 116.4074,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+				{
+					city: "Tbilisi",
+					country: "Georgia",
+					lat: 41.7151,
+					lng: 44.8271,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
+			];
+
+			const titleEl = document.getElementById("tripTitle");
+			const summaryEl = document.getElementById("tripSummary");
+			const daysEl = document.getElementById("tripDays");
+			const spendEl = document.getElementById("tripSpend");
+			const momentEl = document.getElementById("tripMoment");
+			const mapEl = document.getElementById("mapViz");
+
+			const setTripInfo = (trip) => {
+				titleEl.textContent = `${trip.city}, ${trip.country}`;
+				summaryEl.textContent = `A ${trip.days}-day stop with memories worth repeating.`;
+				daysEl.textContent = `${trip.days} days`;
+				spendEl.textContent = new Intl.NumberFormat("en-US", {
+					style: "currency",
+					currency: "EUR",
+					maximumFractionDigits: 0,
+				}).format(trip.spend);
+				momentEl.textContent = trip.note;
+			};
+
+			if (!mapEl) {
+				throw new Error("Map mount element not found.");
+			}
+
+			try {
+				const pigPinIcon = L.icon({
+					iconUrl: "/pig-pin.svg",
+					iconSize: [34, 34],
+					iconAnchor: [17, 30],
+					popupAnchor: [0, -24],
+				});
+
+				const map = L.map(mapEl, {
+					worldCopyJump: true,
+					minZoom: 2,
+					maxZoom: 8,
+					zoomSnap: 0.25,
+					zoomDelta: 0.75,
+					wheelPxPerZoomLevel: 28,
+				});
+
+				L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+					attribution:
+						'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO',
+					subdomains: "abcd",
+				}).addTo(map);
+
+				const bounds = [];
+				for (const trip of trips) {
+					const marker = L.marker([trip.lat, trip.lng], {
+						icon: pigPinIcon,
+					}).addTo(map);
+
+					marker.bindPopup(
+						`<b>${trip.city}, ${trip.country}</b><br/>Days: ${trip.days}<br/>Spend: ${new Intl.NumberFormat("en-US", {
+							style: "currency",
+							currency: "EUR",
+							maximumFractionDigits: 0,
+						}).format(trip.spend)}`,
+					);
+
+					marker.on("click", () => setTripInfo(trip));
+					bounds.push([trip.lat, trip.lng]);
+				}
+
+				if (bounds.length > 0) {
+					map.fitBounds(bounds, {
+						padding: [45, 45],
+						maxZoom: 3.75,
+					});
+				}
+
+				window.addEventListener("resize", () => map.invalidateSize());
+			} catch (error) {
+				console.error("Failed to initialize map", error);
+				mapEl.innerHTML =
+					"<p style='padding:1rem;color:#3f4e3e'>Could not load map. Please refresh or check your network connection.</p>";
+			}
+		</script>
+	</body>
+</html>
+
+<style>
+	:root {
+		--bg-main: #f8eecf;
+		--ink: #2a1d0e;
+		--muted: #5c4c35;
+		--card: rgba(255, 247, 224, 0.92);
+		--border: #a68955;
+		--retro-red: #cb2d2d;
+		--retro-frame: #6f4c20;
+	}
+
+	* {
+		box-sizing: border-box;
+	}
+
+	body {
+		margin: 0;
+		min-height: 100vh;
+		font-family: "VT323", monospace;
+		color: var(--ink);
+		background:
+			linear-gradient(rgba(42, 29, 14, 0.05) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(42, 29, 14, 0.05) 1px, transparent 1px),
+			radial-gradient(circle at 82% 14%, rgba(211, 168, 84, 0.45), transparent 35%),
+			var(--bg-main);
+		background-size:
+			12px 12px,
+			12px 12px,
+			auto;
+	}
+
+	.app-shell {
+		max-width: 1380px;
+		margin: 0 auto;
+		padding: 1.2rem 1rem 2rem;
+	}
+
+	.intro {
+		margin-bottom: 1.4rem;
+	}
+
+	h1 {
+		font-family: "Press Start 2P", cursive;
+		font-size: clamp(1.1rem, 3vw, 2rem);
+		line-height: 1.4;
+		margin: 0.2rem 0 0;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--ink);
+		text-shadow: 2px 2px 0 #e8cb8d;
+	}
+
+	.content-grid {
+		display: grid;
+		grid-template-columns: 3.4fr 1fr;
+		gap: 0.9rem;
+	}
+
+	.globe-card,
+	.info-card {
+		background: var(--card);
+		border: 3px solid var(--retro-frame);
+		border-radius: 10px;
+		box-shadow:
+			6px 6px 0 rgba(42, 29, 14, 0.3),
+			inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+	}
+
+	.globe-card {
+		padding: 0.5rem;
+		position: relative;
+		overflow: hidden;
+	}
+
+	#mapViz {
+		height: 76vh;
+		min-height: 560px;
+		width: 100%;
+	}
+
+	.info-card {
+		padding: 1.2rem 1rem;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+		font-size: 1.5rem;
+	}
+
+	h2 {
+		font-family: "Press Start 2P", cursive;
+		font-size: 1rem;
+		line-height: 1.6;
+		margin: 0;
+	}
+
+	#tripSummary {
+		margin: 0.65rem 0 1.25rem;
+		color: var(--muted);
+	}
+
+	.stats {
+		margin: 0;
+		display: grid;
+		gap: 0.85rem;
+	}
+
+	.stats div {
+		padding: 0.8rem;
+		border-radius: 8px;
+		background: rgba(255, 251, 240, 0.78);
+		border: 2px dashed rgba(92, 76, 53, 0.6);
+	}
+
+	dt {
+		font-size: 0.95rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		font-weight: 400;
+		color: var(--muted);
+	}
+
+	dd {
+		margin: 0.25rem 0 0;
+		font-size: 1.35rem;
+		font-weight: 400;
+	}
+
+	@media (max-width: 900px) {
+		.content-grid {
+			grid-template-columns: 1fr;
+		}
+
+		#mapViz {
+			height: 62vh;
+			min-height: 420px;
+		}
+
+		.info-card {
+			padding: 1rem;
+		}
+	}
+</style>
