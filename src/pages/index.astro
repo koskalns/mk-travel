@@ -33,6 +33,23 @@
 				<div class="globe-card">
 					<div id="mapViz" aria-label="Interactive world travel map"></div>
 				</div>
+				<aside class="stats-card" aria-label="Travel statistics">
+					<h2>TRAVEL STATS</h2>
+					<div class="stats-list">
+						<div class="stat-row">
+							<span>Countries Visited</span>
+							<strong id="statCountries">0</strong>
+						</div>
+						<div class="stat-row">
+							<span>Continents Visited</span>
+							<strong id="statContinents">0</strong>
+						</div>
+						<div class="stat-row">
+							<span>Top Country</span>
+							<strong id="statTopCountry">-</strong>
+						</div>
+					</div>
+				</aside>
 			</section>
 		</main>
 
@@ -375,9 +392,77 @@
 				},
 			];
 			const mapEl = document.getElementById("mapViz");
+			const statCountriesEl = document.getElementById("statCountries");
+			const statContinentsEl = document.getElementById("statContinents");
+			const statTopCountryEl = document.getElementById("statTopCountry");
 
 			if (!mapEl) {
 				throw new Error("Map mount element not found.");
+			}
+
+			const normalizeCountry = (value) =>
+				value
+					.toLowerCase()
+					.normalize("NFD")
+					.replace(/[\u0300-\u036f]/g, "")
+					.replace(/[^a-z\s]/g, "")
+					.replace(/\s+/g, " ")
+					.trim();
+
+			const countryAliases = {
+				england: "united kingdom",
+			};
+
+			const countryToContinent = {
+				belgium: "Europe",
+				china: "Asia",
+				estonia: "Europe",
+				france: "Europe",
+				georgia: "Asia",
+				germany: "Europe",
+				greece: "Europe",
+				italy: "Europe",
+				lithuania: "Europe",
+				netherlands: "Europe",
+				poland: "Europe",
+				portugal: "Europe",
+				spain: "Europe",
+				"united kingdom": "Europe",
+			};
+
+			const normalizedCountries = trips.map((trip) => {
+				const normalized = normalizeCountry(trip.country);
+				return countryAliases[normalized] ?? normalized;
+			});
+			const uniqueCountryCount = new Set(normalizedCountries).size;
+			const continentsVisited = new Set(
+				normalizedCountries
+					.map((country) => countryToContinent[country])
+					.filter(Boolean),
+			);
+
+			const countryFrequency = new Map();
+			for (const country of normalizedCountries) {
+				countryFrequency.set(country, (countryFrequency.get(country) ?? 0) + 1);
+			}
+
+			let topCountry = "-";
+			let topCountryCount = 0;
+			for (const [country, count] of countryFrequency.entries()) {
+				if (count > topCountryCount) {
+					topCountry = country;
+					topCountryCount = count;
+				}
+			}
+
+			if (statCountriesEl) statCountriesEl.textContent = String(uniqueCountryCount);
+			if (statContinentsEl) statContinentsEl.textContent = String(continentsVisited.size);
+			if (statTopCountryEl) {
+				const label =
+					topCountry === "-"
+						? "-"
+						: `${topCountry.replace(/\b\w/g, (c) => c.toUpperCase())} (${topCountryCount})`;
+				statTopCountryEl.textContent = label;
 			}
 
 			try {
@@ -402,19 +487,6 @@
 						'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; CARTO',
 					subdomains: "abcd",
 				}).addTo(map);
-
-				const normalizeCountry = (value) =>
-					value
-						.toLowerCase()
-						.normalize("NFD")
-						.replace(/[\u0300-\u036f]/g, "")
-						.replace(/[^a-z\s]/g, "")
-						.replace(/\s+/g, " ")
-						.trim();
-
-				const countryAliases = {
-					england: "united kingdom",
-				};
 
 				const territoryDenylist = new Set([
 					"french guiana",
@@ -510,11 +582,7 @@
 					}).addTo(map);
 
 					marker.bindPopup(
-						`<b>${trip.city}, ${trip.country}</b><br/>Days: ${trip.days}<br/>Spend: ${new Intl.NumberFormat("en-US", {
-							style: "currency",
-							currency: "EUR",
-							maximumFractionDigits: 0,
-						}).format(trip.spend)}`,
+						`<b>${trip.city}, ${trip.country}</b>`,
 					);
 
 					bounds.push([trip.lat, trip.lng]);
@@ -593,8 +661,9 @@
 
 	.content-grid {
 		display: grid;
-		grid-template-columns: 1fr;
+		grid-template-columns: minmax(0, 3.35fr) minmax(240px, 1fr);
 		gap: 0.9rem;
+		align-items: stretch;
 	}
 
 	.globe-card {
@@ -610,6 +679,51 @@
 		padding: 0.5rem;
 		position: relative;
 		overflow: hidden;
+	}
+
+	.stats-card {
+		background: var(--card);
+		border: 3px solid var(--retro-frame);
+		border-radius: 8px;
+		box-shadow:
+			6px 6px 0 var(--retro-frame-dark),
+			inset 0 0 0 2px rgba(255, 255, 255, 0.45);
+		padding: 1rem 0.95rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.9rem;
+	}
+
+	.stats-card h2 {
+		margin: 0;
+		font-family: "Pixelify Sans", sans-serif;
+		font-size: 1.2rem;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		color: var(--ink);
+	}
+
+	.stats-list {
+		display: grid;
+		gap: 0.6rem;
+	}
+
+	.stat-row {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 0.62rem 0.65rem;
+		background: rgba(255, 243, 211, 0.75);
+		border: 2px dashed rgba(111, 76, 32, 0.45);
+		border-radius: 6px;
+		color: var(--muted);
+		font-size: 0.95rem;
+	}
+
+	.stat-row strong {
+		color: var(--ink);
+		font-size: 1.1rem;
+		font-weight: 700;
 	}
 
 	#mapViz {
@@ -678,6 +792,10 @@
 	@media (max-width: 900px) {
 		.content-grid {
 			grid-template-columns: 1fr;
+		}
+
+		.stats-card {
+			order: 2;
 		}
 
 		#mapViz {
