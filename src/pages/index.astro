@@ -2,14 +2,14 @@
 
 ---
 
-<html lang="lv">
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 		<link rel="icon" href="/favicon.ico" />
 		<meta name="viewport" content="width=device-width" />
 		<meta name="generator" content={Astro.generator} />
-		<title>Mērijona un Kristapona ceļojumi</title>
+		<title>MĒRIJONA UN KRISTAPONA TRAVELS</title>
 		<link
 			rel="stylesheet"
 			href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
@@ -19,39 +19,20 @@
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 		<link
-			href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap"
+			href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Nunito:wght@500;700&display=swap"
 			rel="stylesheet"
 		/>
 	</head>
 	<body>
 		<main class="app-shell">
 			<section class="intro">
-				<h1>Mērijona un Kristapona ceļojumi</h1>
+				<h1>MĒRIJONA UN KRISTAPONA TRAVELS</h1>
 			</section>
 
 			<section class="content-grid">
 				<div class="globe-card">
 					<div id="mapViz" aria-label="Interactive world travel map"></div>
 				</div>
-
-				<aside class="info-card" id="tripInfo" aria-live="polite">
-					<h2 id="tripTitle">Select a pin</h2>
-					<p id="tripSummary">Click any glowing marker to inspect the trip details.</p>
-					<dl class="stats">
-						<div>
-							<dt>Days Spent</dt>
-							<dd id="tripDays">-</dd>
-						</div>
-						<div>
-							<dt>Total Spend</dt>
-							<dd id="tripSpend">-</dd>
-						</div>
-						<div>
-							<dt>Best Moment</dt>
-							<dd id="tripMoment">-</dd>
-						</div>
-					</dl>
-				</aside>
 			</section>
 		</main>
 
@@ -365,26 +346,17 @@
 					spend: 0,
 					note: "Add trip details.",
 				},
+				{
+					city: "Warsaw",
+					country: "Poland",
+					lat: 52.2297,
+					lng: 21.0122,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+				},
 			];
-
-			const titleEl = document.getElementById("tripTitle");
-			const summaryEl = document.getElementById("tripSummary");
-			const daysEl = document.getElementById("tripDays");
-			const spendEl = document.getElementById("tripSpend");
-			const momentEl = document.getElementById("tripMoment");
 			const mapEl = document.getElementById("mapViz");
-
-			const setTripInfo = (trip) => {
-				titleEl.textContent = `${trip.city}, ${trip.country}`;
-				summaryEl.textContent = `A ${trip.days}-day stop with memories worth repeating.`;
-				daysEl.textContent = `${trip.days} days`;
-				spendEl.textContent = new Intl.NumberFormat("en-US", {
-					style: "currency",
-					currency: "EUR",
-					maximumFractionDigits: 0,
-				}).format(trip.spend);
-				momentEl.textContent = trip.note;
-			};
 
 			if (!mapEl) {
 				throw new Error("Map mount element not found.");
@@ -413,6 +385,106 @@
 					subdomains: "abcd",
 				}).addTo(map);
 
+				const normalizeCountry = (value) =>
+					value
+						.toLowerCase()
+						.normalize("NFD")
+						.replace(/[\u0300-\u036f]/g, "")
+						.replace(/[^a-z\s]/g, "")
+						.replace(/\s+/g, " ")
+						.trim();
+
+				const countryAliases = {
+					england: "united kingdom",
+				};
+
+				const territoryDenylist = new Set([
+					"french guiana",
+					"guiana",
+					"guyane",
+					"guyane francaise",
+					"guyana",
+					"guadeloupe",
+					"martinique",
+					"reunion",
+					"mayotte",
+					"falkland islands",
+					"falkland",
+					"malvinas",
+					"curacao",
+					"sint maarten",
+					"aruba",
+					"bonaire",
+					"eustatius",
+					"saba",
+					"saint barthelemy",
+					"saint martin",
+					"st barthelemy",
+					"st martin",
+					"turks and caicos",
+					"british virgin islands",
+					"virgin islands",
+					"puerto rico",
+					"us virgin islands",
+					"us virgin",
+					"greenland",
+					"aland islands",
+					"faroe islands",
+					"new caledonia",
+					"french polynesia",
+					"samoa",
+					"american samoa",
+					"guam",
+					"northern mariana",
+					"hong kong",
+					"macao",
+					"macau",
+				]);
+
+				const pinnedCountries = new Set(
+					trips.map((trip) => {
+						const normalized = normalizeCountry(trip.country);
+						return countryAliases[normalized] ?? normalized;
+					}),
+				);
+
+				map.createPane("countryHighlight");
+				map.getPane("countryHighlight").style.zIndex = "360";
+				map.getPane("countryHighlight").style.pointerEvents = "none";
+
+				const countryGeoJsonUrl =
+					"https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson";
+				const response = await fetch(countryGeoJsonUrl);
+				if (response.ok) {
+					const world = await response.json();
+					L.geoJSON(world, {
+						pane: "countryHighlight",
+						style: (feature) => {
+							const props = feature?.properties ?? {};
+							
+							// First check: if the place's actual NAME is a territory, always exclude it
+							const featureName = normalizeCountry(props.NAME || props.name || "");
+							if (territoryDenylist.has(featureName)) {
+								return {
+									color: "transparent",
+									weight: 0,
+									fillColor: "transparent",
+									fillOpacity: 0,
+								};
+							}
+							
+							// Only highlight if it's an actual pinned country
+							const isPinnedCountry = pinnedCountries.has(featureName);
+							return {
+								color: isPinnedCountry ? "#f4bfd5" : "transparent",
+								weight: isPinnedCountry ? 1 : 0,
+								fillColor: isPinnedCountry ? "#f8d5e5" : "transparent",
+								fillOpacity: isPinnedCountry ? 0.35 : 0,
+							};
+						},
+					}).addTo(map);
+				}
+
 				const bounds = [];
 				for (const trip of trips) {
 					const marker = L.marker([trip.lat, trip.lng], {
@@ -427,7 +499,6 @@
 						}).format(trip.spend)}`,
 					);
 
-					marker.on("click", () => setTripInfo(trip));
 					bounds.push([trip.lat, trip.lng]);
 				}
 
@@ -451,12 +522,14 @@
 <style>
 	:root {
 		--bg-main: #f8eecf;
+		--bg-accent: #f3e0b6;
 		--ink: #2a1d0e;
 		--muted: #5c4c35;
 		--card: rgba(255, 247, 224, 0.92);
-		--border: #a68955;
-		--retro-red: #cb2d2d;
 		--retro-frame: #6f4c20;
+		--retro-frame-dark: #4b3316;
+		--pixel-aqua: #d8bf8a;
+		--pixel-peach: #e0b15c;
 	}
 
 	* {
@@ -466,13 +539,13 @@
 	body {
 		margin: 0;
 		min-height: 100vh;
-		font-family: "VT323", monospace;
+		font-family: "Nunito", sans-serif;
 		color: var(--ink);
 		background:
 			linear-gradient(rgba(42, 29, 14, 0.05) 1px, transparent 1px),
 			linear-gradient(90deg, rgba(42, 29, 14, 0.05) 1px, transparent 1px),
 			radial-gradient(circle at 82% 14%, rgba(211, 168, 84, 0.45), transparent 35%),
-			var(--bg-main);
+			linear-gradient(160deg, var(--bg-main), var(--bg-accent));
 		background-size:
 			12px 12px,
 			12px 12px,
@@ -490,29 +563,28 @@
 	}
 
 	h1 {
-		font-family: "Press Start 2P", cursive;
-		font-size: clamp(1.1rem, 3vw, 2rem);
-		line-height: 1.4;
+		font-family: "Pixelify Sans", sans-serif;
+		font-size: clamp(1.8rem, 4vw, 2.7rem);
+		line-height: 1.2;
 		margin: 0.2rem 0 0;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		text-transform: none;
+		letter-spacing: 0.02em;
 		color: var(--ink);
 		text-shadow: 2px 2px 0 #e8cb8d;
 	}
 
 	.content-grid {
 		display: grid;
-		grid-template-columns: 3.4fr 1fr;
+		grid-template-columns: 1fr;
 		gap: 0.9rem;
 	}
 
-	.globe-card,
-	.info-card {
+	.globe-card {
 		background: var(--card);
 		border: 3px solid var(--retro-frame);
-		border-radius: 10px;
+		border-radius: 8px;
 		box-shadow:
-			6px 6px 0 rgba(42, 29, 14, 0.3),
+			6px 6px 0 var(--retro-frame-dark),
 			inset 0 0 0 2px rgba(255, 255, 255, 0.45);
 	}
 
@@ -526,53 +598,63 @@
 		height: 76vh;
 		min-height: 560px;
 		width: 100%;
+		border: 3px solid var(--pixel-aqua);
+		border-radius: 6px;
+		background: #f4e1b9;
+		overflow: hidden;
 	}
 
-	.info-card {
-		padding: 1.2rem 1rem;
-		display: flex;
-		flex-direction: column;
-		justify-content: flex-start;
-		font-size: 1.5rem;
+	:global(.leaflet-tile) {
+		image-rendering: pixelated;
+		filter: sepia(0.14) saturate(0.9) contrast(1.03) brightness(0.99);
 	}
 
-	h2 {
-		font-family: "Press Start 2P", cursive;
+	:global(.leaflet-marker-icon) {
+		image-rendering: pixelated;
+		filter: drop-shadow(1px 2px 0 rgba(111, 118, 115, 0.45));
+	}
+
+	:global(.leaflet-container) {
+		background: #f4e1b9;
+	}
+
+	:global(.leaflet-popup-content-wrapper),
+	:global(.leaflet-popup-tip) {
+		background: #fff7e0;
+		border: 2px solid #6f4c20;
+		color: #2a1d0e;
+		box-shadow: 3px 3px 0 #4b3316;
+		border-radius: 6px;
+	}
+
+	:global(.leaflet-popup-content) {
+		font-family: "Nunito", sans-serif;
+		font-size: 1.75rem;
+		line-height: 1.35;
+	}
+
+	:global(.leaflet-control-zoom a) {
+		background: var(--pixel-peach);
+		color: #2a1d0e;
+		border-bottom: 2px solid #6f4c20;
+		font-family: "Pixelify Sans", sans-serif;
 		font-size: 1rem;
-		line-height: 1.6;
-		margin: 0;
+		font-weight: 600;
 	}
 
-	#tripSummary {
-		margin: 0.65rem 0 1.25rem;
-		color: var(--muted);
+	:global(.leaflet-control-zoom a:hover) {
+		background: #efc46f;
 	}
 
-	.stats {
-		margin: 0;
-		display: grid;
-		gap: 0.85rem;
+	:global(.leaflet-control-attribution) {
+		background: rgba(255, 247, 224, 0.92);
+		color: #5c4c35;
+		font-family: "Nunito", sans-serif;
+		font-size: 0.8rem;
 	}
 
-	.stats div {
-		padding: 0.8rem;
-		border-radius: 8px;
-		background: rgba(255, 251, 240, 0.78);
-		border: 2px dashed rgba(92, 76, 53, 0.6);
-	}
-
-	dt {
-		font-size: 0.95rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		font-weight: 400;
-		color: var(--muted);
-	}
-
-	dd {
-		margin: 0.25rem 0 0;
-		font-size: 1.35rem;
-		font-weight: 400;
+	:global(.leaflet-control-attribution a) {
+		color: #6f4c20;
 	}
 
 	@media (max-width: 900px) {
@@ -585,8 +667,5 @@
 			min-height: 420px;
 		}
 
-		.info-card {
-			padding: 1rem;
-		}
 	}
 </style>
