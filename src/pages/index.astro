@@ -50,10 +50,6 @@
 						</div>
 					</div>
 					<div class="stat-section">
-						<div class="stat-section-label">Top Destinations</div>
-						<div id="statTopList" class="top-list"></div>
-					</div>
-					<div class="stat-section">
 						<div class="stat-section-label">Countries Explored</div>
 						<div id="statCountriesList" class="country-chips"></div>
 					</div>
@@ -416,11 +412,42 @@
 					spend: 0,
 					note: "Add trip details.",
 				},
+				{
+					city: "Edinburgh",
+					country: "Scotland",
+					lat: 55.9533,
+					lng: -3.1883,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+					visitors: ["kristapons"],
+				},
+				{
+					city: "Alanya",
+					country: "Turkey",
+					lat: 36.5449,
+					lng: 31.9954,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+					visitors: ["kristapons"],
+				},
+				{
+					city: "Zagreb",
+					country: "Croatia",
+					lat: 45.815,
+					lng: 15.9819,
+					days: 0,
+					spend: 0,
+					note: "Add trip details.",
+					visitors: ["merijons"],
+				},
 			];
 			const countryFlags = {
 				austria: "🇦🇹",
 				belgium: "🇧🇪",
 				china: "🇨🇳",
+				croatia: "🇭🇷",
 				estonia: "🇪🇪",
 				france: "🇫🇷",
 				georgia: "🇬🇪",
@@ -432,8 +459,10 @@
 				netherlands: "🇳🇱",
 				poland: "🇵🇱",
 				portugal: "🇵🇹",
+				scotland: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
 				slovenia: "🇸🇮",
 				spain: "🇪🇸",
+				turkey: "🇹🇷",
 				"united kingdom": "🇬🇧",
 			};
 
@@ -463,6 +492,7 @@
 				austria: "Europe",
 				belgium: "Europe",
 				china: "Asia",
+				croatia: "Europe",
 				estonia: "Europe",
 				france: "Europe",
 				georgia: "Asia",
@@ -474,8 +504,10 @@
 				netherlands: "Europe",
 				poland: "Europe",
 				portugal: "Europe",
+				scotland: "Europe",
 				slovenia: "Europe",
 				spain: "Europe",
+				turkey: "Asia",
 				"united kingdom": "Europe",
 			};
 
@@ -510,19 +542,6 @@
 
 			const sortedCountries = [...countryFrequency.entries()].sort((a, b) => b[1] - a[1]);
 
-			const topListEl = document.getElementById("statTopList");
-			if (topListEl) {
-				topListEl.innerHTML = sortedCountries.slice(0, 6).map(([country, count]) => {
-					const displayName = country.replace(/\b\w/g, (c) => c.toUpperCase());
-					const flag = countryFlags[country] ?? "🌍";
-					return `<div class="top-item">
-						<span class="top-flag">${flag}</span>
-						<span class="top-name">${displayName}</span>
-						<span class="top-count">${count}</span>
-					</div>`;
-				}).join("");
-			}
-
 			const countriesListEl = document.getElementById("statCountriesList");
 			if (countriesListEl) {
 				countriesListEl.innerHTML = sortedCountries.map(([country]) => {
@@ -535,6 +554,20 @@
 			try {
 				const pigPinIcon = L.icon({
 					iconUrl: "/pig-pin.svg",
+					iconSize: [34, 34],
+					iconAnchor: [17, 30],
+					popupAnchor: [0, -24],
+				});
+
+				const bluePinIcon = L.icon({
+					iconUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 40'%3E%3Cpath d='M16 2c-7.7 0-14 6.3-14 14 0 7.7 14 22 14 22s14-14.3 14-22c0-7.7-6.3-14-14-14z' fill='%235b8fd4' /%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E",
+					iconSize: [34, 34],
+					iconAnchor: [17, 30],
+					popupAnchor: [0, -24],
+				});
+
+				const redPinIcon = L.icon({
+					iconUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 40'%3E%3Cpath d='M16 2c-7.7 0-14 6.3-14 14 0 7.7 14 22 14 22s14-14.3 14-22c0-7.7-6.3-14-14-14z' fill='%23d45b5b' /%3E%3Ccircle cx='16' cy='16' r='5' fill='white'/%3E%3C/svg%3E",
 					iconSize: [34, 34],
 					iconAnchor: [17, 30],
 					popupAnchor: [0, -24],
@@ -605,6 +638,18 @@
 					}),
 				);
 
+				const countryVisitors = new Map();
+				for (const trip of trips) {
+					const normalized = normalizeCountry(trip.country);
+					const country = countryAliases[normalized] ?? normalized;
+					if (!countryVisitors.has(country)) {
+						countryVisitors.set(country, []);
+					}
+					if (trip.visitors) {
+						countryVisitors.get(country).push(...trip.visitors);
+					}
+				}
+
 				map.createPane("countryHighlight");
 				map.getPane("countryHighlight").style.zIndex = "360";
 				map.getPane("countryHighlight").style.pointerEvents = "none";
@@ -618,7 +663,7 @@
 						pane: "countryHighlight",
 						style: (feature) => {
 							const props = feature?.properties ?? {};
-							
+
 							// First check: if the place's actual NAME is a territory, always exclude it
 							const featureName = normalizeCountry(props.NAME || props.name || "");
 							if (territoryDenylist.has(featureName)) {
@@ -629,14 +674,38 @@
 									fillOpacity: 0,
 								};
 							}
-							
-							// Only highlight if it's an actual pinned country
+
+							// Check if it's a pinned country and get visitor info
 							const isPinnedCountry = pinnedCountries.has(featureName);
+							if (!isPinnedCountry) {
+								return {
+									color: "transparent",
+									weight: 0,
+									fillColor: "transparent",
+									fillOpacity: 0,
+								};
+							}
+
+							const visitors = countryVisitors.get(featureName) ?? [];
+							const hasKristapons = visitors.includes("kristapons");
+							const hasMerijons = visitors.includes("merijons");
+
+							let borderColor = "#f4bfd5";
+							let fillColor = "#f8d5e5";
+
+							if (hasKristapons && !hasMerijons) {
+								borderColor = "#5b8fd4";
+								fillColor = "#a3c5ea";
+							} else if (hasMerijons && !hasKristapons) {
+								borderColor = "#d45b5b";
+								fillColor = "#ea9b9b";
+							}
+
 							return {
-								color: isPinnedCountry ? "#f4bfd5" : "transparent",
-								weight: isPinnedCountry ? 1 : 0,
-								fillColor: isPinnedCountry ? "#f8d5e5" : "transparent",
-								fillOpacity: isPinnedCountry ? 0.35 : 0,
+								color: borderColor,
+								weight: 1,
+								fillColor: fillColor,
+								fillOpacity: 0.35,
 							};
 						},
 					}).addTo(map);
@@ -644,12 +713,25 @@
 
 				const bounds = [];
 				for (const trip of trips) {
+					const isKristaponsOnly = trip.visitors && trip.visitors.includes("kristapons") && trip.visitors.length === 1;
+					const isMerijonsOnly = trip.visitors && trip.visitors.includes("merijons") && trip.visitors.length === 1;
+
+					let icon = pigPinIcon;
+					let mark = "";
+					if (isKristaponsOnly) {
+						icon = bluePinIcon;
+						mark = " ★";
+					} else if (isMerijonsOnly) {
+						icon = redPinIcon;
+						mark = " ◆";
+					}
+
 					const marker = L.marker([trip.lat, trip.lng], {
-						icon: pigPinIcon,
+						icon: icon,
 					}).addTo(map);
 
 					marker.bindPopup(
-						`<b>${trip.city}, ${trip.country}</b>`,
+						`<b>${trip.city}, ${trip.country}</b>${mark}`,
 					);
 
 					bounds.push([trip.lat, trip.lng]);
